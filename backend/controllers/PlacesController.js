@@ -1,37 +1,9 @@
 const { v4: uuidv4 } = require("uuid");
 const { validationResult } = require("express-validator");
 const Place = require("../models/Place");
+const User = require("../models/User");
 const HttpError = require("../models/HttpError");
 const getCoordsFromAddress = require("../utils/location");
-
-let DUMMY_PLACES = [
-  {
-    id: "p1",
-    title: "Empire State Building",
-    description: "One of the bigest sky scrapers in the world",
-    imageUrl:
-      "https://www.great-towers.com/sites/default/files/2019-07/tower_0.jpg",
-    address: "20 W 34th St, New York, NY 100001",
-    location: {
-      lat: 40.748433,
-      lng: -73.985656,
-    },
-    creator: "u1",
-  },
-  {
-    id: "p2",
-    title: "Empire State Building building",
-    description: "One of the bigest sky scrapers in the world",
-    imageUrl:
-      "https://www.great-towers.com/sites/default/files/2019-07/tower_0.jpg",
-    address: "20 W 34th St, New York, NY 100001",
-    location: {
-      lat: 40.748433,
-      lng: -73.985656,
-    },
-    creator: "u2",
-  },
-];
 
 const getPlacesById = async (req, res, next) => {
   const placeId = req.params.pid;
@@ -95,6 +67,21 @@ const createPlace = async (req, res, next) => {
     creator,
   });
 
+  let user;
+  try {
+    user = await User.findById(creator);
+  } catch (err) {
+    const error = new HttpError("Creating place failed, please try again", 500);
+    return next(error);
+  }
+
+  if (!user) {
+    const error = new HttpError("Could not find user with provided id", 404);
+    return next(error);
+  }
+
+  console.log(user);
+
   try {
     await createdPlace.save();
   } catch (err) {
@@ -107,7 +94,9 @@ const createPlace = async (req, res, next) => {
 const updatePlace = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    throw new HttpError("Invalid inputs passed, please check your data.", 422);
+    return next(
+      new HttpError("Invalid inputs passed, please check your data.", 422)
+    );
   }
   const { title, description } = req.body;
   const placeId = req.params.pid;
